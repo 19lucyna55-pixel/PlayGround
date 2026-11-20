@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Castle Clash</title>
+  <style>
+    :root { --ink:#17243a; --cream:#fff7df; --purple:#6f45d9; --red:#ec5a58; --blue:#4c83d9; }
+    * { box-sizing:border-box; }
+    body { margin:0; overflow:hidden; background:#91a9c8; font-family:"Trebuchet MS",Arial,sans-serif; user-select:none; }
+    #app { width:100vw; height:100dvh; display:grid; place-items:center; }
+    #game { position:relative; width:min(100vw,820px); height:100dvh; max-height:920px; background:#b7c68d; overflow:hidden; box-shadow:0 10px 40px #314b66aa; }
+    canvas { display:block; width:100%; height:100%; touch-action:none; }
+    #hud { position:absolute; inset:0; pointer-events:none; }
+    #top { position:absolute; left:18px; right:18px; top:12px; display:flex; justify-content:space-between; align-items:flex-start; }
+    .side { width:150px; }
+    .side.right { text-align:right; }
+    .name { color:white; text-shadow:0 2px 0 #17243a,2px 0 0 #17243a,-2px 0 0 #17243a; font-weight:900; font-size:16px; }
+    .towers { display:flex; gap:5px; margin-top:5px; }
+    .right .towers { justify-content:flex-end; }
+    .towerdot { width:24px; height:24px; border-radius:50%; border:3px solid #fff; background:#58a3dd; box-shadow:0 3px 0 #26364a; }
+    .towerdot.red { background:#ef7772; }
+    #clock { position:absolute; left:50%; top:9px; transform:translateX(-50%); width:76px; text-align:center; color:#fff; background:#26364a; border:3px solid #fff0ba; border-radius:12px; font-size:20px; line-height:36px; font-weight:900; box-shadow:0 4px 0 #17243a; }
+    #cards { position:absolute; left:50%; bottom:max(10px,env(safe-area-inset-bottom)); transform:translateX(-50%); height:132px; display:flex; gap:8px; pointer-events:auto; }
+    .card { position:relative; width:105px; height:132px; border:4px solid #f8edc4; border-radius:13px; background:linear-gradient(#fff7d8,#ddd19f); box-shadow:0 5px 0 #564d54,0 8px 12px #26364a55; cursor:pointer; transition:.08s; }
+    .card.selected { transform:translateY(-10px); border-color:#76ddff; box-shadow:0 5px 0 #275c82,0 0 18px #86dfff; }
+    .card.disabled { filter:grayscale(.75) brightness(.72); cursor:not-allowed; }
+    .portrait { height:76px; margin:5px 5px 0; border-radius:7px; display:grid; place-items:center; overflow:hidden; border-bottom:3px solid #7c755d; }
+    .portrait svg { width:88px; height:88px; filter:drop-shadow(0 3px 0 #0004); }
+    .cardname { height:25px; color:#26364a; text-align:center; line-height:25px; font-size:13px; font-weight:900; }
+    .cost { position:absolute; right:-6px; top:-9px; width:28px; height:28px; border-radius:50%; background:#cf4fa9; border:3px solid #fff; color:white; text-align:center; line-height:22px; font-size:16px; font-weight:900; text-shadow:0 1px #5a2851; }
+    #elixir { position:absolute; left:50%; bottom:max(145px,calc(env(safe-area-inset-bottom) + 145px)); transform:translateX(-50%); width:min(410px,75vw); height:20px; border:3px solid #25364c; border-radius:12px; background:#3a2b55; overflow:hidden; pointer-events:none; }
+    #elixirFill { height:100%; width:0%; background:linear-gradient(90deg,#9c54d7,#ef8cf3); transition:width .12s linear; }
+    #elixirText { position:absolute; right:7px; top:-2px; color:white; font-weight:900; font-size:14px; text-shadow:0 1px 2px #45205c; }
+    #start { position:absolute; inset:0; z-index:5; display:grid; place-items:center; background:#27364a55; pointer-events:auto; backdrop-filter:blur(2px); }
+    .panel { width:min(420px,86vw); padding:24px; border:5px solid #fff4c5; border-radius:20px; background:linear-gradient(#6e78aa,#404b80); text-align:center; color:white; box-shadow:0 12px 0 #26364a,0 20px 40px #1d2b3a88; }
+    .panel h1 { margin:0 0 4px; font-size:38px; text-shadow:0 4px 0 #26364a; }
+    .panel p { margin:8px 0 18px; color:#e9edff; }
+    #startBtn { border:4px solid #fff0a5; border-radius:12px; background:#ef6d62; color:white; font-size:20px; font-weight:900; padding:12px 32px; box-shadow:0 6px 0 #9e3c43; cursor:pointer; }
+    #startBtn:active { transform:translateY(4px); box-shadow:0 2px 0 #9e3c43; }
+    .hidden { display:none!important; }
+    @media(max-height:650px){ .card{width:82px;height:108px}.portrait{height:58px}.cardname{font-size:11px;height:22px}.cost{width:24px;height:24px;line-height:18px}#cards{height:108px}#elixir{bottom:121px} }
+  </style>
+</head>
+<body>
+<div id="app"><div id="game">
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="top"><div class="side"><div class="name">YOU</div><div class="towers" id="blueTowers"></div></div><div id="clock">1:30</div><div class="side right"><div class="name">RIVAL</div><div class="towers" id="redTowers"></div></div></div>
+    <div id="elixir"><div id="elixirFill"></div><div id="elixirText">5</div></div>
+    <div id="cards"></div>
+  </div>
+  <div id="start"><div class="panel"><h1>CASTLE CLASH</h1><p>Deploy troops in your half and destroy the enemy tower!</p><button id="startBtn">BATTLE!</button></div></div>
+</div></div>
+<script>
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+const game=document.getElementById('game'),cardEl=document.getElementById('cards'),clockEl=document.getElementById('clock'),elixirFill=document.getElementById('elixirFill'),elixirText=document.getElementById('elixirText');
+let W=820,H=920,DPR=1,active=false,selected=-1,elixir=5,time=90,last=0;
+const cards=[
+ {name:'Knight',cost:3,color:'#f4b968',hp:240,dmg:44,speed:42,range:24,kind:'melee'},
+ {name:'Archer',cost:3,color:'#7cc89a',hp:130,dmg:34,speed:38,range:115,kind:'ranged'},
+ {name:'Giant',cost:5,color:'#df9a64',hp:520,dmg:65,speed:30,range:30,kind:'tank'},
+ {name:'Bomber',cost:4,color:'#c0a0d5',hp:150,dmg:52,speed:35,range:110,kind:'bomb'}
+];
+let units=[],particles=[],enemyTowers=[],blueTowers=[];
+function tower(team,x,y){return {team,x,y,hp:team==='blue'?900:900,maxHp:900,radius:42,flash:0,alive:true}}
+function resize(){let r=game.getBoundingClientRect();DPR=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;canvas.width=W*DPR;canvas.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0)}
+window.addEventListener('resize',resize);
+function reset(){units=[];particles=[];time=90;elixir=5;selected=-1;enemyTowers=[tower('red',W*.5,155)];blueTowers=[tower('blue',W*.5,H-155)];makeCards();}
+function svg(c,i){const type=c.name; if(type==='Knight')return `<svg viewBox="0 0 100 100"><circle cx="50" cy="43" r="25" fill="#f2ad62"/><path d="M28 39h44l-7-25H35z" fill="#e9eef0"/><path d="M50 7l34 25H16z" fill="#7194c9"/><circle cx="40" cy="44" r="3"/><circle cx="60" cy="44" r="3"/><path d="M20 72q30-25 60 0v18H20z" fill="#4d77a9"/></svg>`;
+ if(type==='Archer')return `<svg viewBox="0 0 100 100"><circle cx="50" cy="36" r="23" fill="#e8b18b"/><path d="M27 38q23-38 46 0" fill="#4d9a67"/><circle cx="42" cy="38" r="3"/><circle cx="58" cy="38" r="3"/><path d="M25 70q25-18 50 0v20H25z" fill="#68b47d"/><path d="M84 31q22 25 0 50" fill="none" stroke="#815734" stroke-width="5"/></svg>`;
+ if(type==='Giant')return `<svg viewBox="0 0 100 100"><circle cx="50" cy="34" r="25" fill="#bd774e"/><path d="M28 30q22-28 44 0" fill="#795c45"/><circle cx="40" cy="37" r="3"/><circle cx="60" cy="37" r="3"/><path d="M18 68q32-20 64 0v22H18z" fill="#b77749"/><path d="M10 68h80" stroke="#795c45" stroke-width="8"/></svg>`;
+ return `<svg viewBox="0 0 100 100"><circle cx="50" cy="38" r="25" fill="#b58ea7"/><path d="M27 35q23-30 46 0" fill="#3d3d48"/><circle cx="42" cy="40" r="3"/><circle cx="58" cy="40" r="3"/><path d="M25 70q25-20 50 0v20H25z" fill="#805c78"/><circle cx="76" cy="66" r="12" fill="#252933"/><circle cx="72" cy="62" r="4" fill="#fff5"/></svg>`}
+function makeCards(){cardEl.innerHTML='';cards.forEach((c,i)=>{const d=document.createElement('div');d.className='card';d.innerHTML=`<div class="cost">${c.cost}</div><div class="portrait" style="background:${c.color}">${svg(c,i)}</div><div class="cardname">${c.name}</div>`;d.onclick=()=>selectCard(i,d);cardEl.appendChild(d)});updateCards()}
+function selectCard(i,d){if(!active||elixir<cards[i].cost)return; if(selected===i){selected=-1}else selected=i;document.querySelectorAll('.card').forEach((x,j)=>x.classList.toggle('selected',j===selected));}
+function updateCards(){document.querySelectorAll('.card').forEach((d,i)=>d.classList.toggle('disabled',elixir<cards[i].cost));}
+function spawn(team,c,x,y){units.push({team,x,y,c,hp:c.hp,maxHp:c.hp,attack:0,flash:0,dir:team==='blue'?-1:1,wander:(Math.random()-0.5)*12})}
+canvas.addEventListener('pointerdown',e=>{if(!active||selected<0)return;const r=canvas.getBoundingRect();const x=e.clientX-r.left,y=e.clientY-r.top;if(y>H*.58)return;const c=cards[selected];if(elixir>=c.cost){spawn('blue',c,x,y);elixir-=c.cost;selected=-1;document.querySelectorAll('.card').forEach(x=>x.classList.remove('selected'));updateCards();}});
+function enemyAI(){if(!active)return;let c=cards[Math.floor(Math.random()*cards.length)];if(elixir>=2){let x=W*(.35+Math.random*.3),y=H*(.18+Math.random*.12);spawn('red',c,x,y)} }
+setInterval(enemyAI,2300);
+function update(dt){if(!active)return;elixir=Math.min(10,elixir+dt*.23*(time<30?1.35:1));time=Math.max(0,time-dt); if(time<=0){endGame()}updateCards();elixirFill.style.width=(elixir*10)+'%';elixirText.textContent=Math.floor(elixir);let m=Math.ceil(time);clockEl.textContent=Math.floor(m/60)+':'+String(m%60).padStart(2,'0');
+for(const u of units){u.attack-=dt;u.flash-=dt;let target=null,best=Infinity;for(const t of (u.team==='blue'?enemyTowers:blueTowers)){if(!t.alive)continue;let d=Math.hypot(t.x-u.x,t.y-u.y);if(d<best){best=d;target=t}}
+for(const v of units){if(v.team!==u.team){let d=Math.hypot(v.x-u.x,v.y-u.y);if(d<best){best=d;target=v}}}
+if(target){if(best<=u.c.range){if(u.attack<=0){u.attack=.85;let dmg=u.c.dmg;if(u.c.kind==='bomb'){burst(target.x,target.y,u.team);if(target.hp)target.hp-=dmg}else target.hp-=dmg;if(target.flash!==undefined)target.flash=.12;u.flash=.12}}
+else{let dx=target.x-u.x,dy=target.y-u.y,d=Math.max(1,Math.hypot(dx,dy));u.x+=(dx/d)*u.c.speed*dt+u.wander*dt*.05;u.y+=(dy/d)*u.c.speed*dt}}
+else{u.y+=u.dir*u.c.speed*dt}
+}
+for(const u of units){if(u.hp<=0)u.dead=true;if(u.team==='red'&&u.y>H-90)u.dead=true;if(u.team==='blue'&&u.y<90)u.dead=true}
+units=units.filter(u=>!u.dead);
+for(const t of [...blueTowers,...enemyTowers]){if(t.hp<=0)t.alive=false}
+for(const p of particles){p.life-=dt;p.y+=p.vy*dt;p.x+=p.vx*dt}particles=particles.filter(p=>p.life>0)
+}
+function burst(x,y,team){for(let i=0;i<10;i++)particles.push({x,y,vx:(Math.random()-0.5)*80,vy:(Math.random()-0.5)*80,life:.45,color:team==='blue'?'#9fe3ff':'#ff9b91'})}
+function draw(){ctx.clearRect(0,0,W,H);drawArena();drawTowers(enemyTowers);drawTowers(blueTowers);for(const u of units)drawUnit(u);for(const p of particles){ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,4,0,7);ctx.fill()}ctx.globalAlpha=1;}
+function drawArena(){ctx.fillStyle='#91bb78';ctx.fillRect(0,0,W,H);ctx.fillStyle='#82b16b';for(let y=0;y<H;y+=55)for(let x=(Math.floor(y/55)%2)*55;x<W;x+=110){ctx.fillRect(x,y,52,52)}ctx.fillStyle='#d8c69d';ctx.fillRect(W*.5-13,0,26,H);ctx.fillStyle='#8a7658';ctx.fillRect(W*.5-9,0,18,H);ctx.fillStyle='#cdbd98';ctx.fillRect(W*.5-30,145,60,62);ctx.fillRect(W*.5-30,H-207,60,62);ctx.strokeStyle='#5f8e63';ctx.lineWidth=3;ctx.setLineDash([10,10]);ctx.beginPath();ctx.moveTo(0,H*.5);ctx.lineTo(W,H*.5);ctx.stroke();ctx.setLineDash([]);}
+function drawTowers(arr){for(const t of arr){if(!t.alive){ctx.fillStyle='#4e5260';ctx.beginPath();ctx.arc(t.x,t.y,35,0,7);ctx.fill();ctx.fillStyle='#697080';ctx.fillRect(t.x-28,t.y-4,56,12);continue}ctx.save();ctx.translate(t.x,t.y);ctx.fillStyle=t.team==='blue'?'#4a76bd':'#d75c58';ctx.beginPath();ctx.moveTo(-42,-25);ctx.lineTo(-42,35);ctx.lineTo(42,35);ctx.lineTo(42,-25);ctx.closePath();ctx.fill();ctx.fillStyle=t.team==='blue'?'#76a5d8':'#ef8981';ctx.beginPath();ctx.arc(0,-25,43,Math.PI,0);ctx.lineTo(43,-25);ctx.lineTo(-43,-25);ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(-38,-38,76,10);ctx.fillStyle=t.team==='blue'?'#3e669f':'#ad4142';ctx.fillRect(-25,10,50,25);ctx.fillStyle='#26364a';ctx.beginPath();ctx.arc(0,-5,8,0,7);ctx.fill();ctx.restore();}}
+function drawUnit(u){ctx.save();ctx.translate(u.x,u.y);if(u.flash>0){ctx.shadowColor='#fff';ctx.shadowBlur=12}ctx.scale(u.team==='blue'?1:-1,1);ctx.fillStyle='rgba(43,60,42,.25)';ctx.beginPath();ctx.ellipse(0,12,18,7,0,0,7);ctx.fill();ctx.fillStyle=u.c.color;ctx.beginPath();ctx.arc(0,-4,17,0,7);ctx.fill();ctx.strokeStyle='#26364a';ctx.lineWidth=3;ctx.stroke();ctx.fillStyle='#ffe1c1';ctx.beginPath();ctx.arc(0,-8,10,0,7);ctx.fill();ctx.fillStyle='#26364a';ctx.fillRect(-6,-10,3,3);ctx.fillRect(3,-10,3,3);if(u.c.kind==='tank')ctx.fillStyle='#795c45';else ctx.fillStyle=u.team==='blue'?'#4b78a8':'#a84f4d';ctx.beginPath();ctx.arc(0,-16,11,Math.PI,0);ctx.fill();ctx.restore();ctx.fillStyle='#26364a';ctx.fillRect(u.x-18,u.y-27,36,5);ctx.fillStyle=u.team==='blue'?'#5aaee8':'#ef6e68';ctx.fillRect(u.x-18,u.y-27,36*Math.max(0,u.hp/u.maxHp),5);}
+function endGame(){active=false;let blueAlive=blueTowers.some(t=>t.alive),redAlive=enemyTowers.some(t=>t.alive);let blueHp=blueTowers.reduce((a,t)=>a+t.hp,0),redHp=enemyTowers.reduce((a,t)=>a+t.hp,0);let win=blueHp>=redHp;const p=document.querySelector('.panel');p.innerHTML=`<h1>${win?'VICTORY!':'DEFEAT'}</h1><p>${win?'The enemy tower has fallen!':'Rally your troops and try again.'}</p><button id="startBtn">PLAY AGAIN</button>`;document.getElementById('start').classList.remove('hidden');document.getElementById('startBtn').onclick=startGame}
+function startGame(){document.getElementById('start').classList.add('hidden');active=true;selected=-1;resize();reset();last=performance.now();requestAnimationFrame(loop)}
+document.getElementById('startBtn').onclick=startGame;
+function loop(now){let dt=Math.min(.033,(now-last)/1000||0);last=now;update(dt);draw();requestAnimationFrame(loop)}
+function initTowerDots(){for(let i=0;i<1;i++){blueTowers=document.createElement('i')}document.getElementById('blueTowers').innerHTML='<span class="towerdot"></span>';document.getElementById('redTowers').innerHTML='<span class="towerdot red"></span>'} 
+resize();reset();initTowerDots();draw();
+</script>
+</body>
+</html>
