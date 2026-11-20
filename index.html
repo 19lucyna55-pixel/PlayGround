@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Heat Run</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090d12;font-family:Arial,sans-serif;color:#fff;touch-action:none;user-select:none}canvas{display:block;width:100%;height:100%}.hud{position:absolute;inset:0;pointer-events:none}.top{display:flex;justify-content:space-between;padding:22px 26px}.brand{font-size:12px;font-weight:900;letter-spacing:4px;color:#b6c0c8}.brand b{display:block;font-size:26px;letter-spacing:-1px;color:#fff}.speed{font-family:monospace;text-align:right}.speed strong{font-size:38px}.wanted{display:flex;gap:5px;margin-top:8px}.star{width:16px;height:16px;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 92%,50% 70%,21% 92%,32% 57%,2% 35%,39% 35%);background:#26313a}.star.on{background:#ffcc32;filter:drop-shadow(0 0 5px #ffcc32)}.bar{position:absolute;left:26px;bottom:30px;width:220px}.bar label{font-size:10px;font-weight:900;letter-spacing:2px;color:#cbd4da}.meter{height:7px;background:#20272d;margin-top:8px;transform:skew(-15deg)}.meter i{display:block;height:100%;background:#35d7ff;width:100%;box-shadow:0 0 12px #35d7ff}.controls{position:absolute;right:22px;bottom:22px;display:flex;gap:10px;pointer-events:auto}.btn{width:78px;height:78px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(12,18,24,.72);backdrop-filter:blur(8px);color:#fff;font-size:18px;font-weight:900}.btn.steer{width:66px;height:66px}.btn:active{background:#ffcc32;color:#111}.touchleft{position:absolute;left:24px;bottom:20px;display:flex;gap:10px;pointer-events:auto}.gameover,.intro{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,9,12,.4);backdrop-filter:blur(3px);pointer-events:auto}.card{text-align:center;border-left:3px solid #ffcc32;padding:20px 34px;background:linear-gradient(90deg,rgba(8,12,16,.92),rgba(8,12,16,.3))}.card h1{font-size:54px;line-height:.9;margin:8px 0 14px;font-style:italic}.card p{color:#abb4ba;margin:0 0 22px}.card button{border:0;background:#ffcc32;color:#111;font-weight:900;padding:14px 28px;letter-spacing:2px;cursor:pointer}.hidden{display:none}@media(max-width:700px){.top{padding:12px 14px}.brand b{font-size:19px}.speed strong{font-size:28px}.bar{left:14px;bottom:14px;width:130px}.touchleft{display:none}.controls{right:12px;bottom:12px}.btn.steer{display:none}.card h1{font-size:38px}}
+</style></head>
+<body>
+<canvas id="game"></canvas>
+<div class="hud">
+ <div class="top"><div class="brand">THE NIGHT SHIFT<b>HEAT RUN</b></div><div class="speed"><div class="wanted" id="wanted"></div><strong><span id="spd">000</span></strong> KM/H</div></div>
+ <div class="bar"><label>BOOST / NITRO</label><div class="meter"><i id="boost"></i></div></div>
+ <div class="touchleft"><button class="btn steer" data-key="ArrowLeft">◀</button><button class="btn steer" data-key="ArrowRight">▶</button></div>
+ <div class="controls"><button class="btn steer" data-key="ArrowLeft">◀</button><button class="btn steer" data-key="ArrowRight">▶</button><button class="btn" data-key="ArrowUp">BOOST</button></div>
+</div>
+<div class="intro" id="intro"><div class="card"><h1>OUTRUN<br>THE HEAT</h1><p>Smash roadblocks • Escape police • Survive as long as you can</p><button id="start">START ENGINE</button></div></div>
+<div class="gameover hidden" id="over"><div class="card"><h1>BUSTED</h1><p id="result">DISTANCE 0 KM</p><button id="again">RUN AGAIN</button></div></div>
+<script>
+const c=document.getElementById('game'),x=c.getContext('2d');let W,H,DPR;
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=W*DPR;c.height=H*DPR;c.style.width=W+'px';c.style.height=H+'px';x.setTransform(DPR,0,0,DPR,0,0)}addEventListener('resize',resize);resize();
+const wanted=document.getElementById('wanted');for(let i=0;i<5;i++){let s=document.createElement('i');s.className='star';wanted.appendChild(s)}
+let playing=false,keys={},roadX=0,score=0,speed=0,boost=100,damage=0,objects=[],police=[],cameraShake=0,last=0,spawn=0;
+const player={x:0,y:0,w:46,h:82};
+function reset(){score=0;speed=55;boost=100;damage=0;objects=[];police=[];roadX=0;player.x=0;for(let i=0;i<5;i++)spawnObject(-300-i*220)}
+function spawnObject(z){let r=Math.random();if(r<.32){let lane=(Math.floor(Math.random()*3)-1)*W*.13;objects.push({type:'barrier',lane,z,w:92,h:34})}else if(r<.48){objects.push({type:'coin',lane:(Math.floor(Math.random()*3)-1)*W*.13,z})}else if(r<.62){objects.push({type:'car',lane:(Math.floor(Math.random()*3)-1)*W*.13,z,sway:Math.random()>.5?1:-1})}}
+function start(){reset();playing=true;document.getElementById('intro').classList.add('hidden');document.getElementById('over').classList.add('hidden');last=performance.now();requestAnimationFrame(loop)}
+document.getElementById('start').onclick=start;document.getElementById('again').onclick=start;
+addEventListener('keydown',e=>{keys[e.key]=true;if(['ArrowLeft','ArrowRight','ArrowUp'].includes(e.key))e.preventDefault()});addEventListener('keyup',e=>keys[e.key]=false);
+document.querySelectorAll('[data-key]').forEach(b=>{let k=b.dataset.key;let set=v=>{keys[k]=v;b.setPointerCapture?.(b._p||0)};b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);keys[k]=true};b.onpointerup=b.onpointerleave=()=>keys[k]=false});
+function project(lane,z){let p=1-z/900;let horizon=H*.27,roadHalf=(W*.12)+(W*.38)*p;return{x:W/2+lane*p,y:horizon+(H-horizon)*p,scale:.15+.85*p,roadHalf}}
+function road(){let horizon=H*.27;let grad=x.createLinearGradient(0,horizon,0,H);grad.addColorStop(0,'#18211d');grad.addColorStop(.45,'#202829');grad.addColorStop(1,'#0d1517');x.fillStyle=grad;x.fillRect(0,0,W,H);
+ // city glow
+ x.fillStyle='#11191b';for(let i=-8;i<18;i++){let xx=(i*110+(roadX*.12)%110);let hh=60+((i*37)%50+50)%50;x.fillRect(xx,horizon-hh,90,hh)}
+ let topW=W*.12,bottomW=W*.5;x.fillStyle='#171e20';x.beginPath();x.moveTo(W/2-topW,horizon);x.lineTo(W/2-bottomW,H);x.lineTo(W/2+bottomW,H);x.lineTo(W/2+topW,horizon);x.fill();
+ // road edge
+ x.fillStyle='#384345';x.beginPath();x.moveTo(W/2-topW,horizon);x.lineTo(W/2-bottomW,H);x.lineTo(W/2-bottomW+18,H);x.lineTo(W/2-topW+5,horizon);x.fill();x.beginPath();x.moveTo(W/2+topW,horizon);x.lineTo(W/2+bottomW,H);x.lineTo(W/2+bottomW-18,H);x.lineTo(W/2+topW-5,horizon);x.fill();
+ // lane markers
+ for(let l=-1;l<=1;l+=2){x.fillStyle='#657071';for(let z=-((roadX*2)%110);z<900;z+=110){let a=project(l*W*.065,z),b=project(l*W*.065,z+48);x.beginPath();x.moveTo(a.x-a.scale*3,a.y);x.lineTo(a.x+a.scale*3,a.y);x.lineTo(b.x+b.scale*3,b.y);x.lineTo(b.x-b.scale*3,b.y);x.fill()}}
+ // roadside lights
+ for(let z=0;z<900;z+=180){let side=((z/180+Math.floor(roadX/180))%2)?1:-1;let p=project(side*W*.42,z);x.fillStyle='#bdc7c7';x.fillRect(p.x-p.scale*3,p.y-p.scale*75,p.scale*6,p.scale*75);x.fillStyle='#ffb43b';x.beginPath();x.arc(p.x,p.y-p.scale*78,p.scale*7,0,7);x.fill()}}
+function poly(points,color){x.fillStyle=color;x.beginPath();x.moveTo(points[0][0],points[0][1]);for(let i=1;i<points.length;i++)x.lineTo(points[i][0],points[i][1]);x.closePath();x.fill()}
+function drawCar(xx,y,sc,color,pol=false){x.save();x.translate(xx,y);x.scale(sc,sc);x.shadowColor='rgba(0,0,0,.8)';x.shadowBlur=14;poly([[-20,-28],[20,-28],[28,-5],[24,35],[-24,35],[-28,-5]],'#090b0c');poly([[-19,-25],[19,-25],[16,-48],[-16,-48]],'#20272a');poly([[-14,-43],[14,-43],[11,-27],[-11,-27]],'#90a8a7');x.fillStyle=color;x.fillRect(-26,-30,52,58);x.fillStyle='#090b0c';x.fillRect(-30,-17,7,24);x.fillRect(23,-17,7,24);x.fillStyle='#eacb76';x.fillRect(-17,-33,9,5);x.fillRect(8,-33,9,5);if(pol){x.fillStyle='#2f78ff';x.fillRect(-13,-27,12,5);x.fillStyle='#ff3344';x.fillRect(1,-27,12,5)}x.restore()}
+function update(dt){let boosting=keys.ArrowUp&&boost>0;let target=boosting?105:72;if(boosting){boost-=18*dt}else boost=Math.min(100,boost+7*dt);speed+=(target-speed)*dt*2;roadX+=speed*dt*.18;score+=speed*dt*.04;let steer=(keys.ArrowLeft?-1:0)+(keys.ArrowRight?1:0);player.x+=steer*330*dt*(1+speed/180);player.x=Math.max(-W*.34,Math.min(W*.34,player.x));spawn-=dt;if(spawn<0){spawnObject(0);spawn=.8+Math.random()*1.1}
+ for(let o of objects){o.z+=speed*dt*2.1;if(o.type==='car')o.lane+=o.sway*dt*18;let p=project(o.lane,o.z);if(o.z>820||o.z<-10){}let px=W/2+player.x,py=H*.82;if(o.z>740&&o.z<830&&Math.abs(px-p.x)<(o.type==='car'?55:48)){if(o.type==='coin'){score+=250;boost=Math.min(100,boost+25);o.z=950}else if(o.type==='barrier'||o.type==='car'){damage+=1;o.z=950;cameraShake=12;speed*=.45;if(damage>=3)end()}}}
+ objects=objects.filter(o=>o.z<920);document.getElementById('spd').textContent=Math.round(speed);document.getElementById('boost').style.width=boost+'%';let stars=1+Math.min(4,Math.floor(score/300));document.querySelectorAll('.star').forEach((s,i)=>s.classList.toggle('on',i<stars))}
+function end(){playing=false;document.getElementById('result').textContent='DISTANCE '+(score/100).toFixed(1)+' KM • CASH '+Math.floor(score)+' CR';document.getElementById('over').classList.remove('hidden')}
+function loop(now){if(!playing)return;let dt=Math.min(.033,(now-last)/1000||.016);last=now;update(dt);draw();requestAnimationFrame(loop)}
+function draw(){x.save();if(cameraShake>0){x.translate((Math.random-.5)*cameraShake,(Math.random-.5)*cameraShake);cameraShake*=.86}road();objects.slice().sort((a,b)=>a.z-b.z).forEach(o=>{let p=project(o.lane,o.z);if(o.type==='coin'){x.save();x.translate(p.x,p.y);x.scale(p.scale,p.scale);x.fillStyle='#ffcc32';x.beginPath();x.arc(0,0,13,0,7);x.fill();x.fillStyle='#806000';x.font='bold 12px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText('$',0,1);x.restore()}else if(o.type==='barrier'){
+ x.save();x.translate(p.x,p.y);x.scale(p.scale,p.scale);
+ x.fillStyle='#e94b32';x.fillRect(-47,-22,94,12);x.fillStyle='#fff';
+ for(let stripe=-36;stripe<40;stripe+=24){x.save();x.translate(stripe,-16);x.rotate(-.55);x.fillRect(-7,-10,12,20);x.restore()}
+ x.fillStyle='#263033';x.fillRect(-42,-10,84,10);x.restore();
+}else drawCar(p.x,p.y,p.scale,'#bfc6c5')});
+ // police pursuit shadows
+ for(let i=0;i<3;i++){let side=i%2?-1:1,px=W/2+side*(170+i*55)+player.x*.15,py=H*.78+i*18;drawCar(px,py,.55-i*.07,'#151d22',true)}
+ drawCar(W/2+player.x,H*.82,1.05,'#d9b520');x.restore()}
+road();drawCar(W/2,H*.82,1.05,'#d9b520');
+</script>
+</body></html>
