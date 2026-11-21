@@ -105,10 +105,10 @@
   const rand = (a,b) => a + Math.random() * (b-a);
   const makeClouds = () => Array.from({length:7}, (_,i) => ({x:i*78+rand(-15,20), y:rand(90,470), s:rand(.55,1.15), speed:rand(8,19)}));
   clouds = makeClouds();
-  function reset() { score=0; scoreEl.textContent='0'; bird={x:105,y:270,vy:0,rot:0,wing:0}; pipes=[]; particles=[]; frame=0; }
+  function reset() { score=0; scoreEl.textContent='0'; bird={x:105,y:270,vy:0,rot:0,wing:0,invulnerable:0}; pipes=[]; particles=[]; frame=0; }
   reset();
   function start() { if (state==='playing') return; reset(); state='playing'; overlay.classList.add('hidden'); flap(); }
-  function flap() { if (state==='ready') { start(); return; } if (state==='over') { start(); return; } if (state!=='playing') return; bird.vy=-390; bird.wing=1; puff(bird.x-14,bird.y,5); if(soundOn) chirp(); }
+  function flap() { if (state==='ready') { start(); return; } if (state==='over') { start(); return; } if (state!=='playing') return; bird.vy=-390; bird.wing=1; bird.invulnerable=0.08; puff(bird.x-14,bird.y,5); if(soundOn) chirp(); }
   function end() {
     if(state!=='playing') return; state='over';
     if(score>best) { best=score; localStorage.setItem('sky-hop-best',best); document.querySelector('#best').textContent=`BEST SCORE · ${best}`; document.querySelector('#best-side').textContent=String(best).padStart(3,'0'); }
@@ -157,13 +157,19 @@
   }
   function update(dt) {
     if(state==='playing') {
-      frame+=dt; bird.vy+=1320*dt; bird.y+=bird.vy*dt; bird.rot=Math.min(.95,Math.max(-.55,bird.vy/620)); bird.wing=Math.max(0,bird.wing-dt*4.5);
+      frame+=dt; bird.invulnerable=Math.max(0,(bird.invulnerable||0)-dt); bird.vy+=1320*dt; bird.y+=bird.vy*dt; bird.rot=Math.min(.95,Math.max(-.55,bird.vy/620)); bird.wing=Math.max(0,bird.wing-dt*4.5);
       if(!pipes.length||pipes[pipes.length-1].x<235){const gap=Math.max(142,178-score*1.1);pipes.push({x:W+8,top:rand(105,floor-gap-80),gap,passed:false});}
       const speed=155+Math.min(score*2.7,85);
       for(const p of pipes){p.x-=speed*dt;if(!p.passed&&p.x+59<bird.x){p.passed=true;score++;scoreEl.textContent=score;if(soundOn)chirp(740);}}
       pipes=pipes.filter(p=>p.x>-80);
       if(bird.y+12>=floor||bird.y-12<0)end();
-      for(const p of pipes){if(bird.x+13>p.x-4&&bird.x-13<p.x+63&&(bird.y-11<p.top-20||bird.y+11>p.top+p.gap+20))end();}
+      if(bird.invulnerable<=0){
+        for(const p of pipes){
+          const hitX=bird.x+11>p.x-5&&bird.x-11<p.x+64;
+          const hitGap=bird.y-9>p.top&&bird.y+9<p.top+p.gap;
+          if(hitX&&!hitGap){end();break;}
+        }
+      }
     }
     particles=particles.filter(p=>p.life>0);particles.forEach(p=>{p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=100*dt;});
   }
