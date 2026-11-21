@@ -184,7 +184,17 @@
     }
     particles=particles.filter(p=>p.life>0);particles.forEach(p=>{p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=100*dt;});
   }
-  function render(now=0) { const dt=Math.min(.035,(now-last)/1000||0);last=now;update(dt);drawBackground(dt);pipes.forEach(drawPipe);drawGround();particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle='#fff8d3';ctx.beginPath();ctx.arc(p.x,p.y,p.size*p.life*2,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;drawBird();requestAnimationFrame(render); }
+  function render(now=0) {
+    const dt=Math.min(.035,(now-last)/1000||0); last=now;
+    update(dt); drawBackground(dt); pipes.forEach(drawPipe); drawGround();
+    particles.forEach(p=>{
+      const radius=Math.max(0,p.size*Math.max(0,p.life)*2);
+      if(radius<=0)return;
+      ctx.globalAlpha=Math.max(0,p.life*2);
+      ctx.fillStyle='#fff8d3'; ctx.beginPath(); ctx.arc(p.x,p.y,radius,0,Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha=1; drawBird(); requestAnimationFrame(render);
+  }
   requestAnimationFrame(render);
 })();
 </script>
