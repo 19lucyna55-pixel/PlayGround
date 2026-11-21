@@ -107,7 +107,18 @@
   clouds = makeClouds();
   function reset() { score=0; scoreEl.textContent='0'; bird={x:105,y:270,vy:0,rot:0,wing:0,invulnerable:0}; pipes=[]; particles=[]; frame=0; }
   reset();
-  function start() { if (state==='playing') return; reset(); state='playing'; overlay.classList.add('hidden'); flap(); }
+  function start() {
+    if (state==='playing') return;
+    reset();
+    state='playing';
+    bird.y=270;
+    bird.vy=-390;
+    bird.wing=1;
+    bird.invulnerable=0.20;
+    overlay.classList.add('hidden');
+    puff(bird.x-14,bird.y,5);
+    if(soundOn) chirp();
+  }
   function flap() { if (state==='ready') { start(); return; } if (state==='over') { start(); return; } if (state!=='playing') return; bird.vy=-390; bird.wing=1; bird.invulnerable=0.08; puff(bird.x-14,bird.y,5); if(soundOn) chirp(); }
   function end() {
     if(state!=='playing') return; state='over';
