@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Neon Drift</title>
+  <style>
+    :style-placeholder {}
+  </style>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main id="game-shell">
+    <canvas id="game" aria-label="Neon Drift arcade game"></canvas>
+    <section id="hud" aria-live="polite">
+      <div class="brand"><span class="brand-mark">N</span><span>NEON DRIFT</span></div>
+      <div class="score"><small>SCORE</small><strong id="score">000000</strong></div>
+      <div class="mult"><small>MULTIPLIER</small><strong id="multi">×1</strong></div>
+      <div class="distance"><small>DISTANCE</small><strong id="distance">0m</strong></div>
+    </section>
+    <section id="start" class="overlay visible">
+      <div class="eyebrow">ENDLESS NIGHT RUN</div>
+      <h1>NEON<br><em>DRIFT</em></h1>
+      <p>Dodge the grid. Chase the pulse.<br>Survive as long as you can.</p>
+      <button id="play">START RUN <span>↗</span></button>
+      <div class="keys"><b>WASD</b> / <b>ARROWS</b> to move &nbsp;•&nbsp; <b>SPACE</b> boost</div>
+    </section>
+    <section id="gameover" class="overlay">
+      <div class="eyebrow danger">SIGNAL LOST</div>
+      <h2>RUN OVER</h2>
+      <div class="final"><div><small>SCORE</small><strong id="finalScore">0</strong></div><div><small>BEST</small><strong id="bestScore">0</strong></div></div>
+      <button id="again">RUN AGAIN <span>↗</span></button>
+    </section>
+    <div id="boost"><small>BOOST</small><div><i id="boostBar"></i></div></div>
+    <div id="controls"><button data-key="left" aria-label="Move left">‹</button><button data-key="up" aria-label="Move up">▲</button><button data-key="down" aria-label="Move down">▼</button><button data-key="right" aria-label="Move right">›</button></div>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
